@@ -150,6 +150,7 @@ export function RenewModal({ isOpen, onClose, member, onUpdate }: RenewModalProp
       const updatePromise = supabase
         .from('members')
         .update({ 
+          start_date: baseDateISO, // Update start_date to the beginning of the new cycle
           end_date: nextEndISO,
           membership_category: category,
           membership_type: type, // Support upgrading/downgrading
