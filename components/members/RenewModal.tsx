@@ -117,7 +117,7 @@ export function RenewModal({ isOpen, onClose, member, onUpdate }: RenewModalProp
   const { baseDateISO, newEndISO } = useMemo(() => {
     const today = phTodayISO()
     const currentEnd = member?.end_date ?? ""
-    const active = member?.status === "active" && currentEnd && currentEnd >= today
+    const active = Boolean(member?.status === "active" && currentEnd && currentEnd >= today)
     const baseISO = active ? currentEnd : today
     const next = computeNewEndISO(type, baseISO, active)
     return { baseDateISO: baseISO, newEndISO: next }
