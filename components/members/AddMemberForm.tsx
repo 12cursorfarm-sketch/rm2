@@ -88,7 +88,7 @@ export function AddMemberForm() {
 
       // Calculate dates
       const startDate = new Date()
-      let endDate = new Date()
+      const endDate = new Date()
 
       if (type === "weekly") {
         endDate.setDate(startDate.getDate() + 7)

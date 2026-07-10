@@ -111,7 +111,7 @@ export function ChangeTypeModal({ isOpen, onClose, member, onUpdate }: ChangeTyp
 
   const computeNewEndISO = useCallback((duration: "1_day" | "weekly" | "monthly", baseISO: string) => {
     if (!baseISO) return ""
-    if (duration === "1_day") return addDaysISOInPH(baseISO, 1)
+    if (duration === "1_day") return baseISO // Sessions expire on the same day they start
     if (duration === "weekly") return addDaysISOInPH(baseISO, 7)
     return addDaysISOInPH(baseISO, 30)
   }, [])

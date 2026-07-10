@@ -107,9 +107,9 @@ export function RenewModal({ isOpen, onClose, member, onUpdate }: RenewModalProp
     )
   }, [getDefaultPayment, inferMonthlyPlan, isOpen, member, pricing, boxingPricing])
 
-  const computeNewEndISO = useCallback((duration: "1_day" | "weekly" | "monthly", baseISO: string) => {
+  const computeNewEndISO = useCallback((duration: "1_day" | "weekly" | "monthly", baseISO: string, isActiveAndNotExpired: boolean) => {
     if (!baseISO) return ""
-    if (duration === "1_day") return addDaysISOInPH(baseISO, 1)
+    if (duration === "1_day") return isActiveAndNotExpired ? addDaysISOInPH(baseISO, 1) : baseISO
     if (duration === "weekly") return addDaysISOInPH(baseISO, 7)
     return addDaysISOInPH(baseISO, 30)
   }, [])
@@ -117,9 +117,9 @@ export function RenewModal({ isOpen, onClose, member, onUpdate }: RenewModalProp
   const { baseDateISO, newEndISO } = useMemo(() => {
     const today = phTodayISO()
     const currentEnd = member?.end_date ?? ""
-    const isActiveAndNotExpired = member?.status === "active" && currentEnd && currentEnd >= today
-    const baseISO = isActiveAndNotExpired ? currentEnd : today
-    const next = computeNewEndISO(type, baseISO)
+    const active = member?.status === "active" && currentEnd && currentEnd >= today
+    const baseISO = active ? currentEnd : today
+    const next = computeNewEndISO(type, baseISO, active)
     return { baseDateISO: baseISO, newEndISO: next }
   }, [computeNewEndISO, member?.end_date, member?.status, type])
 
@@ -143,7 +143,7 @@ export function RenewModal({ isOpen, onClose, member, onUpdate }: RenewModalProp
     setLoading(true)
 
     try {
-      const nextEndISO = computeNewEndISO(type, baseDateISO)
+      const nextEndISO = newEndISO
       if (!nextEndISO) throw new Error("Missing end date")
 
       // 1. Update the member record

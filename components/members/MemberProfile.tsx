@@ -422,6 +422,7 @@ export function MemberProfile({ member, onUpdate }: MemberProfileProps) {
             </div>
           </Card>
         </div>
+
       </div>
 
       {/* Renew Modal */}
