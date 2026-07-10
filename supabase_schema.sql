@@ -14,7 +14,8 @@ CREATE TABLE public.members (
     status member_status NOT NULL DEFAULT 'active',
     qr_code VARCHAR UNIQUE NOT NULL,
     payment_amount DECIMAL(10, 2),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    pending_deletion BOOLEAN DEFAULT false
 );
 
 -- Attendance Table

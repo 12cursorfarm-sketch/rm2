@@ -9,6 +9,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
   const resolvedParams = use(params)
   const [member, setMember] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [role, setRole] = useState<"admin" | "staff">("staff")
 
   const fetchMember = async () => {
     if (!resolvedParams?.id) {
@@ -59,6 +60,19 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
         member_notification_logs: logs ?? [],
       })
     }
+
+    const { data: authData } = await supabase.auth.getUser()
+    if (authData.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .maybeSingle()
+      if (profile && profile.role === "admin") {
+        setRole("admin")
+      }
+    }
+
     setLoading(false)
   }
 
@@ -85,7 +99,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="w-full max-w-7xl mx-auto py-6">
-      <MemberProfile member={member} onUpdate={fetchMember} />
+      <MemberProfile member={member} onUpdate={fetchMember} role={role} />
     </div>
   )
 }

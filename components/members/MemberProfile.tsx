@@ -24,9 +24,10 @@ import {
 type MemberProfileProps = {
   member: any
   onUpdate: () => void
+  role?: "admin" | "staff"
 }
 
-export function MemberProfile({ member, onUpdate }: MemberProfileProps) {
+export function MemberProfile({ member, onUpdate, role = "staff" }: MemberProfileProps) {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false)
   const [isChangeTypeModalOpen, setIsChangeTypeModalOpen] = useState(false)
@@ -51,7 +52,27 @@ export function MemberProfile({ member, onUpdate }: MemberProfileProps) {
     }
   }
 
-  const handleDeleteAccount = async () => {
+  const handleRequestDeletion = async () => {
+    const confirmed = confirm("Are you sure you want to request deletion of this account? An admin must approve it.")
+    if (!confirmed) return
+
+    setDeleteLoading(true)
+    const { error } = await supabase
+      .from("members")
+      .update({ pending_deletion: true })
+      .eq("id", member.id)
+
+    if (error) {
+      toast.error("Failed to request deletion.")
+      console.error(error)
+    } else {
+      toast.success("Deletion requested successfully.")
+      onUpdate()
+    }
+    setDeleteLoading(false)
+  }
+
+  const handleApproveDeletion = async () => {
     const confirmed = confirm("Are you sure you want to permanently delete this account? This cannot be undone.")
     if (!confirmed) return
 
@@ -73,6 +94,23 @@ export function MemberProfile({ member, onUpdate }: MemberProfileProps) {
     onUpdate()
     router.push("/members")
     router.refresh()
+  }
+
+  const handleRejectDeletion = async () => {
+    setDeleteLoading(true)
+    const { error } = await supabase
+      .from("members")
+      .update({ pending_deletion: false })
+      .eq("id", member.id)
+
+    if (error) {
+      toast.error("Failed to reject deletion.")
+      console.error(error)
+    } else {
+      toast.success("Deletion rejected.")
+      onUpdate()
+    }
+    setDeleteLoading(false)
   }
 
   const statusLabel = memberStatusLabel(member)
@@ -151,15 +189,46 @@ export function MemberProfile({ member, onUpdate }: MemberProfileProps) {
           </Button>
         </Link>
         <div className="flex items-center gap-3">
-          <Button 
-            variant="secondary" 
-            className="text-accent-danger border-accent-danger/50 hover:bg-accent-danger/10"
-            onClick={handleDeleteAccount}
-            disabled={deleteLoading}
-          >
-            {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Delete Account
-          </Button>
+          {role === "admin" && member.pending_deletion ? (
+            <>
+              <Button 
+                variant="secondary" 
+                className="text-accent-danger border-accent-danger/50 hover:bg-accent-danger/10"
+                onClick={handleApproveDeletion}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Approve Deletion
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={handleRejectDeletion}
+                disabled={deleteLoading}
+              >
+                Reject Deletion
+              </Button>
+            </>
+          ) : role === "admin" ? (
+            <Button 
+              variant="secondary" 
+              className="text-accent-danger border-accent-danger/50 hover:bg-accent-danger/10"
+              onClick={handleApproveDeletion}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Delete Account
+            </Button>
+          ) : (
+             <Button 
+              variant="secondary" 
+              className="text-accent-danger border-accent-danger/50 hover:bg-accent-danger/10"
+              onClick={handleRequestDeletion}
+              disabled={deleteLoading || member.pending_deletion}
+            >
+              {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {member.pending_deletion ? "Deletion Pending" : "Request Deletion"}
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => setIsEditModalOpen(true)}>
             Edit Profile
           </Button>

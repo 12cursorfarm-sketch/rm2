@@ -34,9 +34,10 @@ type MemberRow = {
   payment_amount: number
   paid: number
   total_paid: number
+  pending_deletion: boolean
 }
 
-type MembersTab = "all" | "active" | "expiring_soon" | "expired"
+type MembersTab = "all" | "active" | "expiring_soon" | "expired" | "pending_deletion"
 type MembershipTypeFilter = "all" | MemberRow["membership_type"]
 type MembershipStatusFilter = "all" | "active" | "expiring_soon" | "expired"
 
@@ -60,7 +61,7 @@ export function MembersTable() {
       .from("members")
       .select(
         `
-          id, name, email, phone, membership_category, photo_url, membership_type, status, start_date, end_date, created_at, payment_amount,
+          id, name, email, phone, membership_category, photo_url, membership_type, status, start_date, end_date, created_at, payment_amount, pending_deletion,
           renewals ( payment_amount, created_at )
         `
       )
@@ -103,6 +104,7 @@ export function MembersTable() {
         payment_amount: basePayment,
         paid,
         total_paid: basePayment + totalRenewals,
+        pending_deletion: !!m.pending_deletion,
       }
     })
 
@@ -126,15 +128,18 @@ export function MembersTable() {
     active: members.filter((m) => isSubscriptionCountedActive(m)).length,
     expiring_soon: members.filter((m) => memberSubscriptionCategory(m) === "expiring_soon").length,
     expired: members.filter((m) => memberSubscriptionCategory(m) === "expired").length,
+    pending_deletion: members.filter((m) => m.pending_deletion).length,
   }
 
   const filteredMembers = searchFiltered.filter((m) => {
     const matchesTab =
       tab === "all"
         ? true
-        : tab === "active"
-          ? isSubscriptionCountedActive(m)
-          : memberSubscriptionCategory(m) === tab
+        : tab === "pending_deletion"
+          ? m.pending_deletion
+          : tab === "active"
+            ? isSubscriptionCountedActive(m)
+            : memberSubscriptionCategory(m) === tab
     const matchesMembershipType = membershipTypeFilter === "all" ? true : m.membership_type === membershipTypeFilter
     const matchesStatus =
       membershipStatusFilter === "all"
@@ -165,6 +170,7 @@ export function MembersTable() {
     { id: "active", label: "Active" },
     { id: "expiring_soon", label: "Expiring soon" },
     { id: "expired", label: "Expired" },
+    { id: "pending_deletion", label: "Pending Deletion" },
   ]
 
   const formatMembershipType = (type: string) => {
@@ -340,7 +346,14 @@ export function MembersTable() {
                         )}
                       </div>
                       <div>
-                        <div className="font-medium text-primary group-hover:text-accent-primary transition-colors">{member.name}</div>
+                        <div className="font-medium text-primary group-hover:text-accent-primary transition-colors flex items-center gap-2">
+                          {member.name}
+                          {member.pending_deletion && (
+                            <Badge variant="negative" className="py-0 leading-none h-4 uppercase text-[9px] px-1.5">
+                              Deletion Requested
+                            </Badge>
+                          )}
+                        </div>
                         {member.email && <div className="text-xs text-muted">{member.email}</div>}
                         {member.phone && <div className="text-xs text-muted">{member.phone}</div>}
                       </div>
