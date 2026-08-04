@@ -23,7 +23,7 @@ export default function MemberProfilePage({ params }: { params: Promise<{ id: st
       .from('members')
       .select(`
         *,
-        renewals ( payment_amount, created_at )
+        renewals ( id, membership_type, membership_category, previous_end_date, new_end_date, payment_amount, created_at )
       `)
       .eq('id', resolvedParams.id)
       .single()

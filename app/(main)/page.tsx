@@ -1,6 +1,7 @@
 import { StatCard } from "@/components/dashboard/StatCard"
 import { MiniChart } from "@/components/dashboard/MiniChart"
 import { PeakHoursChart } from "@/components/dashboard/PeakHoursChart"
+import { WeeklySalesChart } from "@/components/dashboard/WeeklyCharts"
 import { createClient } from "@/utils/supabase/server"
 import { subDays, format } from "date-fns"
 import { isSubscriptionCountedActive, memberSubscriptionCategory } from "@/lib/memberSubscription"
@@ -12,10 +13,18 @@ export const dynamic = 'force-dynamic'
 
 export default async function Dashboard() {
   const supabase = await createClient()
-  const { data: membersResponse } = await supabase.from('members').select('*')
-  const { data: renewalsResponse } = await supabase.from('renewals').select('*')
-  const { data: salesResponse } = await supabase.from('sales').select('*')
   const todayInPH = phTodayISO()
+  // Use a 35-day window to cover: today + last 7 days chart + current billing period (up to ~31 days)
+  // This avoids Supabase's 1000-row default cap cutting off recent records.
+  const windowStart = phDateISOFromDate(new Date(parseISODateAtPHMidnight(todayInPH).getTime() - 35 * 24 * 60 * 60 * 1000))
+
+  const { data: membersResponse } = await supabase.from('members').select('*')
+  const { data: renewalsResponse } = await supabase
+    .from('renewals')
+    .select('*')
+    .gte('created_at', windowStart + 'T00:00:00+08:00')
+    .order('created_at', { ascending: false })
+  const { data: salesResponse } = await supabase.from('sales').select('*')
   const { data: attendanceResponse } = await supabase
     .from("attendance")
     .select("check_in_date, created_at")
@@ -23,7 +32,8 @@ export default async function Dashboard() {
 
   console.log("DASHBOARD SERVER DEBUG:", {
     todayInPH,
-    count: attendanceResponse?.length ?? 0
+    renewalCount: renewalsResponse?.length ?? 0,
+    attendanceCount: attendanceResponse?.length ?? 0
   })
 
   const members = membersResponse || []
@@ -197,8 +207,8 @@ export default async function Dashboard() {
 
     const processPayment = (type: string, amount: number) => {
       if (type === '1_day') oneDaySales += amount
-      else if (type === '1_week') weeklySales += amount
-      else if (type === '1_month' || type === 'student_1_month') monthlySales += amount
+      else if (type === 'weekly') weeklySales += amount
+      else if (type === 'monthly') monthlySales += amount
     }
 
     // Members created on this day
@@ -314,6 +324,10 @@ export default async function Dashboard() {
           totalCheckIns={totalCheckInsToday}
           windowLabel="Today"
         />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <WeeklySalesChart data={weeklySalesData} />
       </div>
     </div>
   )

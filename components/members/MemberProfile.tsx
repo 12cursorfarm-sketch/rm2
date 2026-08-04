@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/Badge"
 import { format } from "date-fns"
-import { ArrowLeft, User, Calendar, Clock, Loader2, AlertCircle, Mail, ChevronLeft, ChevronRight, Phone, Edit } from "lucide-react"
+import { ArrowLeft, User, Calendar, Clock, Loader2, AlertCircle, Mail, ChevronLeft, ChevronRight, Phone, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { RenewModal } from "./RenewModal"
@@ -111,6 +111,67 @@ export function MemberProfile({ member, onUpdate, role = "staff" }: MemberProfil
       onUpdate()
     }
     setDeleteLoading(false)
+  }
+
+  const handleRevertRenewal = async (renewalId: string) => {
+    const confirmed = confirm("Are you sure you want to revert this renewal? This will delete the renewal record and restore the member's previous membership status.")
+    if (!confirmed) return
+
+    setDeleteLoading(true)
+    try {
+      // 1. Delete the renewal record
+      const { error: deleteError } = await supabase
+        .from("renewals")
+        .delete()
+        .eq("id", renewalId)
+
+      if (deleteError) throw deleteError
+
+      // 2. Revert the member's details
+      const remainingRenewals = (member.renewals || [])
+        .filter((r: any) => r.id !== renewalId)
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      let updateData: any = {}
+
+      if (remainingRenewals.length > 0) {
+        // If there's a previous renewal, restore to its values
+        const prev = remainingRenewals[0]
+        updateData = {
+          end_date: prev.new_end_date,
+          start_date: prev.previous_end_date,
+          membership_type: prev.membership_type,
+          membership_category: prev.membership_category || "gym",
+          payment_amount: Number(prev.payment_amount),
+          status: "active"
+        }
+      } else {
+        // If no renewals remain, restore to original registration values
+        const deletedRenewal = (member.renewals || []).find((r: any) => r.id === renewalId)
+        const prevEndDate = deletedRenewal ? deletedRenewal.previous_end_date : member.start_date
+        const regDate = member.created_at ? member.created_at.split("T")[0] : member.start_date
+
+        updateData = {
+          end_date: prevEndDate,
+          start_date: regDate,
+        }
+      }
+
+      const { error: updateError } = await supabase
+        .from("members")
+        .update(updateData)
+        .eq("id", member.id)
+
+      if (updateError) throw updateError
+
+      toast.success("Renewal reverted successfully.")
+      onUpdate()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to revert renewal.")
+      console.error(err)
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const statusLabel = memberStatusLabel(member)
@@ -298,7 +359,7 @@ export function MemberProfile({ member, onUpdate, role = "staff" }: MemberProfil
           </Card>
         </div>
 
-        <div className="xl:col-span-8">
+        <div className="xl:col-span-8 space-y-6">
           <Card className="p-0 border border-white/10 overflow-hidden">
             <div className="p-6 border-b border-white/10 flex justify-between items-center">
               <h3 className="text-sm font-semibold text-secondary uppercase tracking-wider">Membership Details</h3>
@@ -339,6 +400,78 @@ export function MemberProfile({ member, onUpdate, role = "staff" }: MemberProfil
                 </div>
               </div>
 
+            </div>
+          </Card>
+
+          <Card className="p-0 border border-white/10 overflow-hidden">
+            <div className="p-6 border-b border-white/10">
+              <h3 className="text-sm font-semibold text-secondary uppercase tracking-wider">Renewal History</h3>
+            </div>
+            <div className="overflow-x-auto w-full">
+              {!member.renewals || member.renewals.length === 0 ? (
+                <div className="p-8 text-center text-muted text-sm bg-card/20">
+                  No renewal records found.
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-white/[0.01]">
+                      <th className="font-medium p-4 border-b border-white/[0.05] text-xs text-muted uppercase tracking-wider">Date Renewed</th>
+                      <th className="font-medium p-4 border-b border-white/[0.05] text-xs text-muted uppercase tracking-wider">Category & Type</th>
+                      <th className="font-medium p-4 border-b border-white/[0.05] text-xs text-muted uppercase tracking-wider">Duration</th>
+                      <th className="font-medium p-4 border-b border-white/[0.05] text-xs text-muted uppercase tracking-wider">Amount</th>
+                      {role === "admin" && (
+                        <th className="font-medium p-4 border-b border-white/[0.05] text-xs text-muted uppercase tracking-wider text-right">Actions</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...member.renewals]
+                      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                      .map((renewal: any, index: number) => {
+                        const isLatest = index === 0
+                        const formattedDate = new Date(renewal.created_at).toLocaleDateString("en-US", {
+                          month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
+                        })
+                        const formatCategory = (cat: string) => {
+                          if (cat === "boxing_muaythai") return "Boxing/MT"
+                          return "Gym"
+                        }
+                        return (
+                          <tr key={renewal.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
+                            <td className="p-4 text-sm text-primary">{formattedDate}</td>
+                            <td className="p-4 text-sm text-secondary">
+                              <span className="capitalize">{formatCategory(renewal.membership_category || "gym")}</span> — <span className="capitalize">{renewal.membership_type.replace("_", " ")}</span>
+                            </td>
+                            <td className="p-4 text-sm text-secondary">
+                              {format(new Date(renewal.previous_end_date), "MMM d, yyyy")} — {format(new Date(getAdjustedEndDate(renewal.new_end_date, renewal.membership_type)), "MMM d, yyyy")}
+                            </td>
+                            <td className="p-4 text-sm font-semibold text-primary">₱{Number(renewal.payment_amount).toFixed(2)}</td>
+                            {role === "admin" && (
+                              <td className="p-4 text-right">
+                                {isLatest ? (
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handleRevertRenewal(renewal.id)}
+                                    disabled={deleteLoading}
+                                    className="text-accent-danger hover:bg-accent-danger/10 border-accent-danger/20 inline-flex items-center gap-1.5 py-1 px-2.5 h-auto text-xs"
+                                    title="Revert/Delete this renewal"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Revert
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted select-none">Locked</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </Card>
         </div>
