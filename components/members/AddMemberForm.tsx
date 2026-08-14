@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button"
 import { toast } from "sonner"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { DEFAULT_PRICING, BOXING_PRICING, type MonthlyPlan, type PricingConfig } from "@/lib/pricing"
+import { ImageUploader } from "@/components/ui/ImageUploader"
 
 export function AddMemberForm() {
   const router = useRouter()
@@ -21,6 +22,7 @@ export function AddMemberForm() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [payment, setPayment] = useState("")
   const [pricing, setPricing] = useState<PricingConfig>(DEFAULT_PRICING)
   const [boxingPricing, setBoxingPricing] = useState<PricingConfig>(BOXING_PRICING)
@@ -110,7 +112,7 @@ export function AddMemberForm() {
           name,
           email: email || null,
           phone: phone || null,
-          photo_url: null,
+          photo_url: photoUrl,
           membership_category: category,
           membership_type: type,
           status: "active",
@@ -281,6 +283,17 @@ export function AddMemberForm() {
         )}
 
         <div className="space-y-5">
+            <div className="flex flex-col items-center justify-center p-4 bg-input/30 border border-white/10 rounded-xl">
+              <ImageUploader
+                value={photoUrl}
+                onChange={setPhotoUrl}
+                name={name || "New Member"}
+                size="lg"
+                disabled={loading}
+              />
+              <p className="text-xs text-muted mt-2">Upload profile photo or snap with webcam</p>
+            </div>
+
             <div>
               <label className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2 block">Full Name <span className="text-accent-danger">*</span></label>
               <Input 

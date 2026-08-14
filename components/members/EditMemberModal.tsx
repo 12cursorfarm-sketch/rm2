@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button"
 import { toast } from "sonner"
 import { X, Loader2 } from "lucide-react"
 
+import { ImageUploader } from "@/components/ui/ImageUploader"
+
 type EditMemberModalProps = {
   isOpen: boolean
   onClose: () => void
@@ -16,6 +18,7 @@ type EditMemberModalProps = {
     name: string
     email?: string | null
     phone?: string | null
+    photo_url?: string | null
   } | null
   onUpdate: () => void
 }
@@ -25,12 +28,14 @@ export function EditMemberModal({ isOpen, onClose, member, onUpdate }: EditMembe
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen && member) {
       setName(member.name || "")
       setEmail(member.email || "")
       setPhone(member.phone || "")
+      setPhotoUrl(member.photo_url || null)
     }
   }, [isOpen, member])
 
@@ -53,6 +58,7 @@ export function EditMemberModal({ isOpen, onClose, member, onUpdate }: EditMembe
           name: name.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
+          photo_url: photoUrl,
         })
         .eq("id", member.id)
 
@@ -83,6 +89,17 @@ export function EditMemberModal({ isOpen, onClose, member, onUpdate }: EditMembe
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
+          <div className="flex flex-col items-center justify-center mb-2">
+            <ImageUploader
+              value={photoUrl}
+              onChange={setPhotoUrl}
+              name={name || "Member"}
+              size="lg"
+              disabled={loading}
+            />
+            <p className="text-xs text-muted mt-2">Click image to upload file or take photo</p>
+          </div>
+
           <div>
             <label className="text-xs font-semibold text-secondary uppercase tracking-wider mb-2 block">
               Full Name <span className="text-accent-danger">*</span>
