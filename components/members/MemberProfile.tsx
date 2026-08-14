@@ -13,6 +13,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { RenewModal } from "./RenewModal"
 import { ChangeTypeModal } from "./ChangeTypeModal"
 import { EditMemberModal } from "./EditMemberModal"
+import { ImageUploader } from "@/components/ui/ImageUploader"
 import { memberStatusBadgeVariant, memberStatusLabel, getAdjustedEndDate } from "@/lib/memberSubscription"
 import { cn } from "@/lib/utils"
 import {
@@ -111,6 +112,22 @@ export function MemberProfile({ member, onUpdate, role = "staff" }: MemberProfil
       onUpdate()
     }
     setDeleteLoading(false)
+  }
+
+  const handleDirectPhotoUpdate = async (newUrl: string | null) => {
+    try {
+      const { error } = await supabase
+        .from("members")
+        .update({ photo_url: newUrl })
+        .eq("id", member.id)
+
+      if (error) throw error
+      toast.success("Profile photo updated!")
+      onUpdate()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast.error("Failed to update profile photo: " + msg)
+    }
   }
 
   const handleRevertRenewal = async (renewalId: string) => {
@@ -312,13 +329,12 @@ export function MemberProfile({ member, onUpdate, role = "staff" }: MemberProfil
                     : "ring-accent-danger"
               }`}
             >
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-input/50 flex items-center justify-center">
-                {member.photo_url ? (
-                  <img src={member.photo_url} alt={member.name} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-10 h-10 text-muted" />
-                )}
-              </div>
+              <ImageUploader
+                value={member.photo_url}
+                onChange={handleDirectPhotoUpdate}
+                name={member.name}
+                size="lg"
+              />
             </div>
 
             <div className="flex items-center justify-center gap-2 mb-1 group/name">

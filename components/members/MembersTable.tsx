@@ -342,7 +342,9 @@ export function MembersTable() {
                         {member.photo_url ? (
                           <img src={member.photo_url} alt={member.name} className="w-full h-full object-cover" />
                         ) : (
-                          <User className="w-4 h-4 text-muted mx-auto my-2" />
+                          <span className="text-xs font-bold text-zinc-300">
+                            {member.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                          </span>
                         )}
                       </div>
                       <div>
